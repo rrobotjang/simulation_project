@@ -525,3 +525,33 @@ Use code with caution.
 
 MVP 배포에서는 **방법 2(Supervisor)**가 코드 수정 없이 두 시스템을 효과적으로 단일 컨테이너에 통합할 수 있는 가장 표준적이고 강력한 방법입니다.
 
++++++++++++++++++++++++++++++++++++++++++++++
+
+Sim-to-Real Checklist & Step-by-Step Guide
+1단계: 하드웨어 및 소프트웨어 환경 구축 (필수 점검)
+1. 로봇 및 주변 환경: * 두산 로봇암: 전원 연결, 컨트롤러 부팅, 네트워크 연결 확인. * D455 카메라: 로봇 엔드 이펙터에 단단히 고정되었는지 확인. USB 3.0 이상 포트에 연결. * 워크스테이션/엣지 PC: 로봇암과 D455를 연결할 PC (GPU 장착 필수). ROS 2 설치 및 설정 완료.
+
+2. ROS 2 패키지 및 코드 준비: * 위에 제시된 camera_driver_node.py, student_policy_inference_node.py, robot_arm_interface_node.py 파일들을 하나의 ROS 2 패키지(예: doosan_rl_sim2real) 내에 저장. * setup.py에 노드 실행 스크립트 등록 (또는 launch 파일 생성). * student_policy.pt (학습된 Student 모델) 파일이 추론 노드에서 접근 가능한 경로에 있는지 확인. * 두산 로봇 ROS 드라이버가 설치되어 있고, joint_states 발행 및 joint_group_vel_controller/commands 구독이 가능한지 확인.
+
+3. Safety (제일 중요!): * 비상 정지 버튼 (E-Stop): 로봇 컨트롤러 및 주변에 손 닿는 곳에 비상 정지 버튼이 항상 활성화되어 있는지 확인. * 작업 공간 확보: 로봇의 최대 가동 범위 내에 사람이 없도록 안전 구역 설정. * 속도 제한: student_policy_inference_node.py의 self.MAX_SPEED 값을 매우 낮게 (예: 0.1 rad/s) 설정하여 초기 움직임을 최소화합니다.
+
+2단계: 개별 노드 테스트 및 캘리브레이션
+1. camera_driver_node 테스트: * ros2 run doosan_rl_sim2real camera_driver_node 실행. * ros2 topic echo /camera/depth/image_raw로 메시지 발행 확인. * ros2 run rviz2 rviz2에서 Image Display를 추가하여 Depth 이미지 가시화 확인. (RealSense SDK 필터 적용 여부 확인) * 중요: Depth 이미지의 노이즈, 범위, 해상도가 시뮬레이션 학습 시와 최대한 유사한지 육안으로 확인.
+
+2. 두산 로봇 ROS 드라이버 테스트: * 두산 로봇 ROS 드라이버를 실행하여 joint_states 토픽이 정상적으로 발행되는지 확인. * ros2 topic echo /joint_states로 관절 값 확인. * 수동으로 로봇을 움직여 joint_states 값이 변하는지 확인. * robot_arm_interface_node가 로봇 API와 정상적으로 통신할 수 있는지 사전 테스트 (로봇 제어 없이 self.get_logger().info 등으로 API 호출 성공 여부만 확인).
+
+3. Sim-to-Real Gap - Hand-Eye Calibration (필수!): * D455 카메라의 3D 공간에서의 정확한 위치와 방향을 로봇 베이스 좌표계 기준으로 알아야 합니다. * **robot_base_link 기준 camera_link의 Transformation (변환 행렬)**이 필요합니다. * 이 과정은 ros2_hand_eye_calibration 같은 패키지나 외부 툴을 사용하여 정밀하게 수행해야 합니다. * 시뮬레이션에서 정의된 카메라 위치와 실제 카메라 위치가 정확히 일치하는지 확인하는 과정입니다. 이 단계가 잘못되면 로봇은 잘못된 공간 정보를 해석합니다.
+
+3단계: 통합 시스템 구동 (Sim-to-Real!)
+주의: 이 단계부터 로봇이 예측 불가능하게 움직일 수 있으므로, 항상 비상 정지 버튼을 누를 준비를 해야 합니다.
+
+1. 모든 노드 실행 (터미널 여러 개 사용 또는 Launch 파일): * ros2 run doosan_rl_sim2real camera_driver_node * ros2 run doosan_rl_sim2real student_policy_inference_node * ros2 run doosan_rl_sim2real robot_arm_interface_node * 두산 로봇의 ROS 드라이버 (또는 컨트롤러)도 실행되어야 합니다.
+
+2. 초기 동작 관찰 (아주 느리게): * 로봇이 움직이기 시작하면, 아주 느리게 (MAX_SPEED가 낮으므로) 로봇 팔이 어떤 방향으로 움직이는지 관찰합니다. * 정확하게 원하는 동작(예: 물건 집기)과 유사한 방향으로 움직이는가? * 아니면 엉뚱한 방향으로 급발진하는가? * 조금이라도 이상하면 즉시 비상 정지 버튼을 누릅니다.
+
+3. 디버깅 및 반복: * 로봇이 이상하게 움직인다면: * /policy_actions 토픽을 ros2 topic echo로 확인: 모델이 어떤 명령을 내리고 있는지 확인. * 카메라 이미지와 전처리 확인: student_policy_inference_node 내에서 전처리된 이미지를 발행하여 Rviz2로 확인하거나, 중간 단계의 tensor를 저장하여 시뮬레이션 데이터와 비교. * Hand-Eye Calibration 재확인: 가장 흔한 Sim-to-Real Gap 원인입니다. * MAX_SPEED를 더 낮추거나, action_scaling에 문제가 없는지 확인. * 작은 성공: 만약 로봇이 원하는 방향으로 아주 조금이라도 움직인다면, MAX_SPEED를 천천히 올리면서 점진적으로 동작 범위를 늘려나갑니다.
+
+4. Tidy Task 실행: * 로봇이 안정적으로 움직인다면, 실제 물건들을 테이블 위에 배치하고 Tidy Task를 시도합니다. * 물건의 종류, 크기, 놓인 위치 등을 다양하게 바꿔가며 로봇의 강인성(Robustness)을 테스트합니다.
+
+Sim-to-Real은 인내심과 세심한 디버깅이 필요한 과정입니다. 하지만 성공한다면, 가상 세계에서 학습된 AI가 현실 세계에 강림하는 엄청난 성취를 경험하게 될 것입니다.
+
