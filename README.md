@@ -1,6 +1,6 @@
 # simulation_project
 
-saac Lab (OmniIsaacLab) 내에서 두산 로봇팔과 테이블 같은 사용자 정의 자산을 추가하고 SAC 강화 학습을 구성하는 방법은 Isaac Lab의 구조화된 설정 시스템을 따릅니다. 하루 안에 목표를 달성하기 위한 구체적인 절차와 명령어를 안내해 드립니다.
+Isaac Lab (OmniIsaacLab) 내에서 두산 로봇팔과 테이블 같은 사용자 정의 자산을 추가하고 SAC 강화 학습을 구성하는 방법은 Isaac Lab의 구조화된 설정 시스템을 따릅니다. 하루 안에 목표를 달성하기 위한 구체적인 절차와 명령어를 안내해 드립니다.
 1. Lab 내에서 사용자 정의 자산(Asset)으로 추가하는 과정
 Isaac Lab은 USD(Universal Scene Description) 형식을 사용하여 환경을 정의합니다. URDF 모델을 USD로 변환하여 임포트하는 과정이 필요합니다.
 단계별 절차:
